@@ -1,0 +1,58 @@
+{% extends 'backup/base.html' %}
+{% block content %}
+<div class="bk-head">
+    <div>
+        <h1>Configuração do backup</h1>
+        <p>Para onde as cópias vão, por quanto tempo ficam guardadas e em que horário cada rotina roda.</p>
+    </div>
+</div>
+{% include 'backup/_backup_estilo.html' %}
+
+<div class="bk-card">
+    <h2><span class="material-icons" aria-hidden="true">cloud</span>Destino externo</h2>
+    <div class="bk-body">
+        <form method="post" class="bk-form">{% csrf_token %}
+            <input type="hidden" name="acao" value="destino">
+            <label>Nome<input class="bk-in" type="text" name="nome" maxlength="80" value="{{ destino.nome|default:'' }}" required></label>
+            <label>Tipo
+                <select class="bk-in" name="tipo">
+                    {% for v, n in tipos %}<option value="{{ v }}" {% if destino.tipo == v %}selected{% endif %}>{{ n }}</option>{% endfor %}
+                </select></label>
+            <label>Endereço / bucket<input class="bk-in" type="text" name="endereco" maxlength="200" value="{{ destino.endereco|default:'' }}" required></label>
+            <label>Retenção (dias)<input class="bk-in" type="number" name="retencao_dias" min="7" max="365" value="{{ destino.retencao_dias|default:30 }}"></label>
+            <label>Criptografia<input class="bk-in" type="text" value="{{ destino.criptografia|default:'AES-256' }}" disabled></label>
+            <label class="chk"><input type="checkbox" name="ativo" {% if not destino or destino.ativo %}checked{% endif %}> Destino ativo</label>
+            <div class="larga" style="font-size:12px;color:var(--text-muted);">A chave de criptografia e as credenciais de acesso ao destino ficam no servidor (variáveis de ambiente), nunca no banco de dados nem nesta tela.</div>
+            <div class="larga"><button class="bk-btn primary" type="submit"><span class="material-icons" aria-hidden="true">save</span>Salvar destino</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="bk-card">
+    <h2><span class="material-icons" aria-hidden="true">schedule</span>Rotinas</h2>
+    <div class="bk-scroll">
+    <table class="bk-tabela">
+        <thead><tr><th>Rotina</th><th>Origem</th><th>Destino</th><th>Horário diário</th><th>Ativa</th><th></th></tr></thead>
+        <tbody>
+        {% for r in rotinas %}
+        <tr>
+            <td><strong>{{ r.nome }}</strong></td>
+            <td>{{ r.get_origem_display }}</td>
+            <td>{{ r.destino.nome }}</td>
+            <td><input form="rot-{{ r.pk }}" class="bk-in" type="time" name="horario" value="{{ r.horario|time:'H:i' }}" required></td>
+            <td><input form="rot-{{ r.pk }}" type="checkbox" name="ativa" {% if r.ativa %}checked{% endif %} aria-label="Rotina ativa"></td>
+            <td class="num">
+                <form method="post" id="rot-{{ r.pk }}">{% csrf_token %}
+                    <input type="hidden" name="acao" value="rotina"><input type="hidden" name="rotina_id" value="{{ r.pk }}">
+                    <button class="bk-btn sm" type="submit">Salvar</button>
+                </form>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="bk-vazio">Nenhuma rotina cadastrada.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

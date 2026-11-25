@@ -1,0 +1,66 @@
+{% extends 'backup/base.html' %}
+{% block content %}
+<div class="bk-head">
+    <div>
+        <h1>Testes de restauração</h1>
+        <p>Uma vez por mês, uma cópia do destino externo é restaurada num ambiente separado para provar que ela realmente volta. Registre aqui o resultado.</p>
+    </div>
+</div>
+{% include 'backup/_backup_estilo.html' %}
+
+<div class="bk-grid2">
+    <div class="bk-card">
+        <h2><span class="material-icons" aria-hidden="true">add_task</span>Registrar teste</h2>
+        <div class="bk-body">
+            <form method="post" class="bk-form">{% csrf_token %}
+                <label class="larga">Cópia testada
+                    <select class="bk-in" name="execucao" required>
+                        {% for c in copias %}<option value="{{ c.pk }}">{{ c.rotina.nome }} — {{ c.inicio|date:"d/m/Y H:i" }} — {{ c.tamanho_legivel }}</option>{% endfor %}
+                    </select></label>
+                <label>Data do teste<input class="bk-in" type="date" name="data" value="{{ hoje|date:'Y-m-d' }}" max="{{ hoje|date:'Y-m-d' }}" required></label>
+                <label>Resultado
+                    <select class="bk-in" name="resultado" required>
+                        {% for v, n in resultados %}<option value="{{ v }}">{{ n }}</option>{% endfor %}
+                    </select></label>
+                <label>Tempo para restaurar (min)<input class="bk-in" type="number" name="tempo_minutos" min="1" required></label>
+                <label class="larga">Observações<textarea class="bk-in" name="observacao" rows="3" placeholder="O que foi conferido (ex.: abriu o sistema, contou funcionários, abriu documentos)."></textarea></label>
+                <div class="larga"><button class="bk-btn primary" type="submit"><span class="material-icons" aria-hidden="true">save</span>Registrar teste</button></div>
+            </form>
+        </div>
+    </div>
+    <div class="bk-card">
+        <h2><span class="material-icons" aria-hidden="true">event</span>Situação</h2>
+        <div class="bk-body">
+            <dl class="bk-dl">
+                <dt>Último teste</dt><dd>{% if ultimo %}{{ ultimo.data|date:"d/m/Y" }}{% else %}nunca realizado{% endif %}</dd>
+                <dt>Resultado</dt><dd>{% if ultimo %}<span class="bk-st {{ ultimo.resultado }}">{{ ultimo.get_resultado_display }}</span>{% else %}—{% endif %}</dd>
+                <dt>Próximo até</dt><dd>{% if vence %}{{ vence|date:"d/m/Y" }}{% if vence < hoje %} <strong>(vencido)</strong>{% endif %}{% else %}agora{% endif %}</dd>
+                <dt>Frequência</dt><dd>Mensal</dd>
+            </dl>
+        </div>
+    </div>
+</div>
+
+<div class="bk-card">
+    <h2><span class="material-icons" aria-hidden="true">fact_check</span>Testes realizados</h2>
+    <div class="bk-scroll">
+    <table class="bk-tabela">
+        <thead><tr><th>Data</th><th>Cópia testada</th><th>Resultado</th><th class="num">Tempo</th><th>Responsável</th><th>Observações</th></tr></thead>
+        <tbody>
+        {% for t in testes %}
+        <tr>
+            <td>{{ t.data|date:"d/m/Y" }}</td>
+            <td>{{ t.execucao.rotina.nome }}<div class="mono">{{ t.execucao.inicio|date:"d/m/Y H:i" }}</div></td>
+            <td><span class="bk-st {{ t.resultado }}">{{ t.get_resultado_display }}</span></td>
+            <td class="num">{{ t.tempo_minutos }} min</td>
+            <td>{{ t.responsavel.get_full_name|default:t.responsavel.username|default:"—" }}</td>
+            <td>{{ t.observacao|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="bk-vazio">Nenhum teste registrado.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

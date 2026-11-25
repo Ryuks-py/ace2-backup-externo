@@ -1,0 +1,100 @@
+{% extends 'backup/base.html' %}
+{% block content %}
+<div class="bk-head">
+    <div>
+        <h1>Backup externo</h1>
+        <p>Cópias diárias criptografadas do banco de dados e dos arquivos da sede, enviadas para fora da empresa e guardadas por {{ destino.retencao_dias|default:30 }} dias.</p>
+    </div>
+</div>
+{% include 'backup/_backup_estilo.html' %}
+
+<div class="bk-kpis">
+    <div class="bk-kpi">
+        <div class="rot"><span class="material-icons" aria-hidden="true">verified</span>Sucesso em 30 dias</div>
+        <div class="val">{% if taxa30 is not None %}{{ taxa30 }}%{% else %}—{% endif %}</div>
+        <div class="sub">{{ ok30 }} de {{ total30 }} execuções</div>
+    </div>
+    <div class="bk-kpi">
+        <div class="rot"><span class="material-icons" aria-hidden="true">inventory_2</span>Cópias guardadas</div>
+        <div class="val">{{ copias }}</div>
+        <div class="sub">{{ espaco }} no destino externo</div>
+    </div>
+    <div class="bk-kpi">
+        <div class="rot"><span class="material-icons" aria-hidden="true">settings_backup_restore</span>Último teste de restauração</div>
+        <div class="val">{% if ultimo_teste %}{{ ultimo_teste.data|date:"d/m/Y" }}{% else %}—{% endif %}</div>
+        <div class="sub">{% if ultimo_teste %}{{ ultimo_teste.get_resultado_display }} · próximo até {{ vence_teste|date:"d/m/Y" }}{% else %}nunca realizado{% endif %}</div>
+    </div>
+    <div class="bk-kpi">
+        <div class="rot"><span class="material-icons" aria-hidden="true">cloud</span>Destino</div>
+        <div class="val" style="font-size:16px;">{{ destino.nome|default:"Não configurado" }}</div>
+        <div class="sub">{% if destino %}{{ destino.criptografia }} · retenção {{ destino.retencao_dias }} dias{% endif %}</div>
+    </div>
+</div>
+
+<div class="bk-card">
+    <h2><span class="material-icons" aria-hidden="true">notifications</span>Alertas<span class="bk-dir">{{ alertas|length }} pendente{{ alertas|length|pluralize }}</span></h2>
+    <div class="bk-body">
+        {% for a in alertas %}
+        <div class="bk-alerta {{ a.nivel }}">
+            <span class="material-icons" aria-hidden="true">{% if a.nivel == 'erro' %}error{% else %}warning{% endif %}</span>
+            <div><strong>{{ a.titulo }}</strong><span class="txt">{{ a.texto }}</span></div>
+        </div>
+        {% empty %}
+        <div class="bk-ok"><span class="material-icons" aria-hidden="true">check_circle</span>Nenhum alerta. Todas as rotinas estão em dia.</div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="bk-card">
+    <h2><span class="material-icons" aria-hidden="true">schedule</span>Rotinas</h2>
+    <div class="bk-scroll">
+    <table class="bk-tabela">
+        <thead><tr><th>Rotina</th><th>Última execução</th><th>Última cópia concluída</th><th>Próxima</th><th>Últimos 14 dias</th><th></th></tr></thead>
+        <tbody>
+        {% for item in rotinas %}
+        <tr>
+            <td><strong>{{ item.r.nome }}</strong><div class="mono">{{ item.r.get_origem_display }}</div></td>
+            <td>{% if item.ultima %}<span class="bk-st {{ item.ultima.status }}">{{ item.ultima.get_status_display }}</span><div class="mono">{{ item.ultima.inicio|date:"d/m/Y H:i" }}</div>{% else %}—{% endif %}</td>
+            <td>{% if item.ultima_ok %}{{ item.ultima_ok.inicio|date:"d/m/Y H:i" }}<div class="mono">{{ item.ultima_ok.tamanho_legivel }}</div>{% else %}—{% endif %}</td>
+            <td>{% if item.r.ativa %}{{ item.proxima|date:"d/m H:i" }}{% else %}<span class="mono">desativada</span>{% endif %}</td>
+            <td><div class="bk-dias">{% for d in item.dias %}<span class="bk-dia {{ d.status|default:'' }}" title="{{ d.data|date:'d/m' }}: {{ d.status|default:'sem execução' }}"></span>{% endfor %}</div></td>
+            <td class="num">
+                <form method="post" action="{% url 'backup_executar' item.r.pk %}">{% csrf_token %}
+                    <button class="bk-btn sm" type="submit"><span class="material-icons" aria-hidden="true">play_arrow</span>Executar agora</button>
+                </form>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="bk-vazio">Nenhuma rotina cadastrada. Configure em <a href="{% url 'backup_configuracao' %}">Configuração</a>.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div class="bk-body" style="padding-top:0;">
+        <div class="bk-legenda"><span><i class="bk-dia SUCESSO"></i>Sucesso</span><span><i class="bk-dia FALHA"></i>Falha</span><span><i class="bk-dia"></i>Sem execução</span></div>
+    </div>
+</div>
+
+<div class="bk-card">
+    <h2><span class="material-icons" aria-hidden="true">history</span>Execuções recentes<a class="bk-dir" href="{% url 'backup_historico' %}">Ver histórico completo</a></h2>
+    <div class="bk-scroll">
+    <table class="bk-tabela">
+        <thead><tr><th>Início</th><th>Rotina</th><th>Status</th><th>Arquivo</th><th class="num">Tamanho</th><th class="num">Duração</th></tr></thead>
+        <tbody>
+        {% for e in recentes %}
+        <tr>
+            <td>{{ e.inicio|date:"d/m/Y H:i" }}</td>
+            <td>{{ e.rotina.nome }}{% if e.manual %} <span class="mono">(manual)</span>{% endif %}</td>
+            <td><span class="bk-st {{ e.status }}">{{ e.get_status_display }}</span></td>
+            <td class="mono">{{ e.arquivo|default:e.mensagem }}</td>
+            <td class="num">{% if e.status == 'SUCESSO' %}{{ e.tamanho_legivel }}{% else %}—{% endif %}</td>
+            <td class="num">{{ e.duracao|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="bk-vazio">Nenhuma execução registrada.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

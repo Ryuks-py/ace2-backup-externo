@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sistema RH — Backup externo (protótipo)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+<style>
+:root {
+    --bg: #f4f4f4; --card-bg: #ffffff; --text: #111111; --text-muted: #6b6b6b;
+    --border: #e4e4e4; --border-strong: #cfcfcf; --surface-alt: #fafafa; --surface-alt-2: #f0f0f0;
+    --success: #16a34a; --danger: #dc2626; --danger-bg: #fef2f2; --danger-border: #fecaca;
+    --warning: #d97706; --warning-bg: #fffbeb; --warning-border: #fde68a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Inter, "Segoe UI", Arial, sans-serif; background: var(--bg); color: var(--text); }
+.layout { display: flex; min-height: 100vh; }
+.sidebar { width: 230px; background: #111; color: #fff; padding: 22px 16px; flex-shrink: 0; }
+.sidebar .marca { font-size: 20px; font-weight: 700; text-align: center; margin-bottom: 22px; }
+.sidebar .user { background: #1c1c1c; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 18px; }
+.sidebar .user small { display: block; color: #999; }
+.sidebar a { display: flex; align-items: center; gap: 10px; color: #ddd; text-decoration: none; padding: 9px 10px; border-radius: 8px; font-size: 14px; }
+.sidebar a:hover { background: #1c1c1c; }
+.sidebar a.active { background: #fff; color: #111; font-weight: 600; }
+.sidebar .material-icons { font-size: 19px; }
+.conteudo { flex: 1; padding: 30px 32px; min-width: 0; }
+.msg { padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; border: 1px solid var(--border); background: var(--card-bg); }
+.msg.success { border-color: #bbf7d0; background: #f0fdf4; }
+.msg.error { border-color: var(--danger-border); background: var(--danger-bg); }
+@media (max-width: 800px) { .layout { flex-direction: column; } .sidebar { width: auto; } }
+</style>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="marca">Sistema RH</div>
+        {% if user.is_authenticated %}
+        <div class="user">{{ user.get_full_name|default:user.username }}<small>{{ user.perfil.get_tipo_display|default:"" }}</small></div>
+        <a href="{% url 'backup_painel' %}" class="{% if request.path|slice:':8' == '/backup/' %}active{% endif %}"><span class="material-icons" aria-hidden="true">cloud_sync</span>Backup externo</a>
+        <form method="post" action="{% url 'logout' %}" style="margin-top:12px;">{% csrf_token %}
+            <button type="submit" style="all:unset;cursor:pointer;display:flex;gap:10px;align-items:center;color:#ddd;padding:9px 10px;font-size:14px;"><span class="material-icons" aria-hidden="true">logout</span>Sair</button>
+        </form>
+        {% endif %}
+    </aside>
+    <main class="conteudo">
+        {% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+</body>
+</html>
